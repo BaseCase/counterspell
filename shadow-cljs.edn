@@ -1,11 +1,12 @@
-;; shadow-cljs configuration
 {:source-paths
- ["src/dev"
-  "src/main"
-  "src/test"]
+ ["src/main"]
 
  :dependencies
  [[reagent "1.2.0"]]
 
+ :dev-http {8080 "public"}
+
  :builds
- {}}
+ {:app
+  {:target :browser
+   :modules {:main {:init-fn counterspell.core/init}}}}}
