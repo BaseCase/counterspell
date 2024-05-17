@@ -2,7 +2,7 @@
   (:require [reagent.dom.client :as rdom]))
 
 (defn main []
-  [:h1 "meow meow?"])
+  [:h1 "Counterspell!"])
 
 (defonce root (rdom/create-root (.querySelector js/document "#root")))
 
