@@ -9,4 +9,6 @@
  :builds
  {:app
   {:target :browser
-   :modules {:main {:init-fn counterspell.core/init}}}}}
+   :modules {:main {:init-fn counterspell.core/init}}
+   :output-dir "public/js"
+   :asset-path "/"}}}
