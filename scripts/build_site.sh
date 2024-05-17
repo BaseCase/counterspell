@@ -6,7 +6,7 @@ set pipefail
 
 echo "Cleaning..."
 git checkout deploy
-git merge main
+git merge main -m "update with latest"
 rm -rf docs
 mkdir docs
 
