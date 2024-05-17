@@ -1,4 +1,13 @@
-(ns counterspell.core)
+(ns counterspell.core
+  (:require [reagent.dom.client :as rdom]))
 
-(defn init []
-  (println "hi"))
+(defn main []
+  [:h1 "meow meow?"])
+
+(defonce root (rdom/create-root (.querySelector js/document "#root")))
+
+(defn
+  ^:dev/after-load
+  init
+  []
+  (rdom/render root [main]))
