@@ -1,5 +1,7 @@
 node_modules/
 public/js
+dist/
+counterspell_dist.zip
 
 /target
 /checkouts
