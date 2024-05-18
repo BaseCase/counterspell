@@ -1,3 +1,15 @@
 body {
   background: #eee;
 }
+
+.letter-grid {
+  display: flex;
+
+  .column {
+
+    .letter {
+      border: 1px solid #ccc;
+      padding: 1rem;
+    }
+  }
+}
