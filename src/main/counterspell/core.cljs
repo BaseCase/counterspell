@@ -1,11 +1,15 @@
 (ns counterspell.core
-  (:require [reagent.dom.client :as rdom]))
+  (:require [reagent.dom.client :as rdom]
+            [reagent.core :as r]))
+
+(defn index [coll] (map-indexed vector coll))
+
 
 ;; TODO: how many turns should the game be?
-(def game-turns 3)
-
 ;; TODO: how big should the grid be?
-(def grid-size {:rows 5 :cols 4})
+(def game-turns 3)
+(def grid-rows 5)
+(def grid-cols 4)
 
 ;; TODO: figure out how to get seeds working
 (defn create-letter-generator [seed]
@@ -14,35 +18,41 @@
 
 (def letters (create-letter-generator nil))
 
-
-;; Gives us columns as a list of lists of maps.
+;; Gives us columns as a list of lists of letters
 ;; We'll render the columns bottom to top; that is, first item is lowest of the screen.
-;; TODO: could this function be less terrible?
 (defn generate-game-grid []
-  (let [height (* (grid-size :rows) (inc game-turns))
-        width (grid-size :cols)
-        flat-letters (take (* height width) letters)
-        build-starting-maps (fn [letters]
-                              (map #(hash-map :letter % :visible false) letters))
-        set-initial-visible (fn [xs]
-                              (concat
-                               (map #(assoc % :visible true) (take (grid-size :rows) xs))
-                               (drop (grid-size :rows) xs)))]
-
+  (let [height (* grid-rows (inc game-turns))
+        flat-letters (take (* height grid-cols) letters)]
     (->> flat-letters
-         (partition height)
-         (map build-starting-maps)
-         (map set-initial-visible))))
+         (partition height))))
 
+
+(def state (r/atom {:grid (generate-game-grid)
+                    :active-tiles #{}}))
+(defn activate-tile [x y]
+  (swap! state update-in [:active-tiles] conj [x y]))
+
+;;
+;; ui components
+;;
+(defn letter-tile [{:keys [letter x y]}]
+  (let [on-click-letter (fn [evt]
+                          (activate-tile x y))
+        activated? ((@state :active-tiles) [x y])]
+    [:div.letter {:class (when activated? "active")
+                  :on-click on-click-letter}
+     letter]))
 
 (defn letter-grid []
   ;; TODO: the grid probably wants to be a ratom
-  (let [grid (generate-game-grid)]
+  (let [grid (:grid @state)]
     [:div.letter-grid
-     (for [col grid]
-       [:div.column
-        (for [letter (->> col (filter :visible) reverse)]
-          [:div.letter (:letter letter)])])]))
+     (for [[x col] (index grid)]
+       (let [letters (take grid-rows col)]
+         [:div.column {:key x}
+          (for [[y l] (index letters)]
+            [letter-tile {:letter l :x x :y y
+                          :key (str l x y)}])]))]))
 
 (defn main []
   [:div
