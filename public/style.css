@@ -6,6 +6,8 @@ body {
   display: flex;
 
   .column {
+    display: flex;
+    flex-direction: column-reverse;
 
     .letter {
       border: 1px solid #ccc;
