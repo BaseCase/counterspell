@@ -12,6 +12,17 @@ body {
     .letter {
       border: 1px solid #ccc;
       padding: 1rem;
+      cursor: pointer;
+      user-select: none;
+
+      &:hover {
+        background-color: #fee;
+      }
+
+      &.active {
+        border: 2px solid black;
+        background-color: #fcc;
+      }
     }
   }
 }
