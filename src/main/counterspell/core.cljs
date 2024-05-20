@@ -21,18 +21,18 @@
 ;; Gives us columns as a list of lists of letters
 ;; We'll render the columns bottom to top; that is, first item is lowest of the screen.
 (defn generate-game-grid []
-  (let [height (* grid-rows (inc game-turns))
-        flat-letters (take (* height grid-cols) letters)]
-    (->> flat-letters
+  (let [height (* grid-rows (inc game-turns))]
+    (->> letters
+         (take (* height grid-cols))
          (partition height))))
-
 
 (def state (r/atom {:grid (generate-game-grid)
                     :active-tiles []
                     :last-submitted-word nil}))
 
+
 (defn tile-active? [x y]
-  (some #(= % [x y]) (@state :active-tiles)))
+  (some #{[x y]} (@state :active-tiles)))
 
 (defn tiles-to-string [tiles grid]
   (apply str (map (fn [[x y]]
@@ -42,30 +42,28 @@
 (defn submit-word! [tiles]
   (swap! state (fn [s]
                  (let [word (tiles-to-string tiles (s :grid))]
-                   (-> s
-                       (assoc :last-submitted-word word)
-                       (assoc :active-tiles []))))))
+                   (merge s {:last-submitted-word word
+                             :active-tiles []})))))
 
 (defn legal-tiles []
-  (let [tail (last (@state :active-tiles))]
-    (if tail
-      ;; if we have an active selection, legal tiles are any inactive tiles adjacent to the tail
-      (let [[x y] tail]
-        (-> (for [x' (range (dec x) (+ 2 x))
-                  y' (range (dec y) (+ 2 y))]
-              (when (and (not (tile-active? x' y'))
-                         (<= 0 x')
-                         (<= 0 y')
-                         (< x' grid-cols)
-                         (< y' grid-rows))
-                [x' y']))
-            set
-            (disj nil)))
-      ;; if there is no selection, any tile is a legal move
-      (-> (for [x (range grid-cols)
-                y (range grid-rows)]
-            [x y])
-          set))))
+  (if-let [tail (last (@state :active-tiles))]
+    ;; if we have an active selection, legal tiles are any inactive tiles adjacent to the tail
+    (let [[x y] tail]
+      (-> (for [x' (range (dec x) (+ 2 x))
+                y' (range (dec y) (+ 2 y))]
+            (when (and (not (tile-active? x' y'))
+                       (<= 0 x')
+                       (<= 0 y')
+                       (< x' grid-cols)
+                       (< y' grid-rows))
+              [x' y']))
+          set
+          (disj nil)))
+    ;; if there is no selection, any tile is a legal move
+    (-> (for [x (range grid-cols)
+              y (range grid-rows)]
+          [x y])
+        set)))
 
 (defn tile-action-at! [x y]
   "takes coords of a clicked tile and figures out what to do with it: update active selection and maybe submit a word."
