@@ -2,6 +2,10 @@ body {
   background: #eee;
 }
 
+#root {
+  padding: 1rem 3rem;
+}
+
 .letter-grid {
   display: flex;
 
@@ -25,4 +29,9 @@ body {
       }
     }
   }
+}
+
+.building-word {
+  padding: 1rem;
+  font-size: 2rem;
 }
