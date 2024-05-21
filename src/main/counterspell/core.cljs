@@ -1,8 +1,11 @@
 (ns counterspell.core
   (:require [reagent.dom.client :as rdom]
-            [reagent.core :as r]))
+            [reagent.core :as r]
+            [counterspell.core.words :refer [words]]))
+
 
 (defn index [coll] (map-indexed vector coll))
+
 
 
 ;; TODO: how many turns should the game be?
@@ -28,7 +31,8 @@
 
 (def state (r/atom {:grid (generate-game-grid)
                     :active-tiles []
-                    :last-submitted-word nil}))
+                    :not-a-real-word nil
+                    :submitted-words []}))
 
 
 (defn tile-active? [x y]
@@ -39,11 +43,16 @@
                     (nth (nth grid x) y))
                   tiles)))
 
+(defn real-word? [s]
+  (words s))
+
 (defn submit-word! [tiles]
   (swap! state (fn [s]
-                 (let [word (tiles-to-string tiles (s :grid))]
-                   (merge s {:last-submitted-word word
-                             :active-tiles []})))))
+                 (let [word (.toLowerCase (tiles-to-string tiles (s :grid)))]
+                   (if (real-word? word)
+                     (merge s {:active-tiles []
+                               :submitted-words (conj (s :submitted-words) word)})
+                     (merge s {:not-a-real-word word}))))))
 
 (defn legal-tiles []
   (if-let [tail (last (@state :active-tiles))]
@@ -73,18 +82,21 @@
         ;; if you click the last tile twice, submit it as a word
         (submit-word! active-tiles)
         ;; if you click the active chain somewhere in its middle, deselect anything past that
-        (swap! state assoc :active-tiles
-               (conj (->> active-tiles
-                          (take-while #(not (= % [x y])))
-                          (into []))
-                     [x y])))
+        (swap! state (fn [s]
+                       (merge s {:active-tiles (conj (->> active-tiles
+                                                          (take-while #(not (= % [x y])))
+                                                          (into []))
+                                                     [x y])
+                                 :not-a-real-word nil}))))
       (if ((legal-tiles) [x y])
         ;; if this tile is inactive and valid, activate it!
-        (swap! state assoc :active-tiles
-               (conj active-tiles [x y]))
+        (swap! state (fn [s]
+                       (merge s {:active-tiles (conj active-tiles [x y])
+                                 :not-a-real-word nil})))
         ;; if you click an invalid inactive tile, reset the selection
-        (swap! state assoc :active-tiles
-               [])))))
+        (swap! state (fn [s]
+                       (merge s {:active-tiles []
+                                 :not-a-real-word nil})))))))
 
 ;;
 ;; ui components
@@ -106,22 +118,28 @@
                           :key (str l x y)}])]))]))
 
 (defn building-word []
-  (let [word (tiles-to-string (@state :active-tiles) (@state :grid))]
+  (let [word (tiles-to-string (@state :active-tiles) (@state :grid))
+        mistake (@state :not-a-real-word)]
     [:div.building-word
-     [:h3 word]]))
+     [:h3 word]
+     (when mistake
+       [:p.mistake (str mistake " is not a word!")])]))
 
 (defn submitted-words []
-  (let [word (@state :last-submitted-word)]
-    (when (and (empty? (@state :active-tiles)) word)
-      [:div.submitted-word
-       [:h3 (str word " is a word!")]])))
+  (let [words (@state :submitted-words)]
+    [:div.submitted-word
+     (for [word words]
+       [:h4 word])]))
 
 (defn main []
   [:div
    [:h1 "Counterspell!!!"]
-   [letter-grid]
-   [building-word]
-   [submitted-words]])
+   [:div.game-board
+    [:div.play-area
+     [letter-grid]
+     [building-word]]
+    [:div.scoreboard
+     [submitted-words]]]])
 
 (defonce root (rdom/create-root (.querySelector js/document "#root")))
 

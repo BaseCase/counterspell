@@ -6,6 +6,15 @@ body {
   padding: 1rem 3rem;
 }
 
+.game-board {
+  display: flex;
+}
+
+.scoreboard {
+  font-size: 1.4rem;
+  padding: 1rem 2rem;
+}
+
 .letter-grid {
   display: flex;
 
@@ -34,4 +43,8 @@ body {
 .building-word {
   padding: 1rem;
   font-size: 2rem;
+}
+
+.mistake {
+  color: #e312f5;
 }
