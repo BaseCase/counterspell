@@ -1,7 +1,7 @@
 (ns counterspell.core
   (:require [reagent.dom.client :as rdom]
             [reagent.core :as r]
-            [counterspell.core.words :refer [words]]))
+            [counterspell.words :refer [words]]))
 
 
 (defn index [coll] (map-indexed vector coll))

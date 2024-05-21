@@ -1,4 +1,4 @@
-(ns counterspell.core.words)
+(ns counterspell.words)
 ;; TODO: consider various word lists and decide whether to stick with this one or replace it
 (def words
   #{"aaa"
