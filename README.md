@@ -4,6 +4,10 @@ TODO: write this file
 
 TODO: favicon file
 
+TODO: credit wordlist source (https://www.mit.edu/~ecprice/wordlist.10000)
+
+
+>>>>>>> main
 ## Building instructions
 1. Install dependencies (`npm install` and (TODO: what is the shadow-cljs version of this?))
 2. Run `npx shadow-cljs release app`

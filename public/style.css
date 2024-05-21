@@ -6,6 +6,24 @@ body {
   padding: 1rem 3rem;
 }
 
+.game-board {
+  display: flex;
+}
+
+.scoreboard {
+  font-size: 1.4rem;
+  padding: 1rem 2rem;
+}
+
+@keyframes deleting {
+  0% {
+    opacity: 100%;
+  }
+  100% {
+    opacity: 0%;
+  }
+}
+
 .letter-grid {
   display: flex;
 
@@ -27,6 +45,10 @@ body {
         border: 2px solid black;
         background-color: #fcc;
       }
+
+      &.deleting {
+        animation: deleting forwards 1s;
+      }
     }
   }
 }
@@ -34,4 +56,8 @@ body {
 .building-word {
   padding: 1rem;
   font-size: 2rem;
+}
+
+.mistake {
+  color: #e312f5;
 }
