@@ -29,10 +29,13 @@
          (take (* height grid-cols))
          (partition height))))
 
+(def possible-game-states #{:playing :tiles-deleting})
+
 (def state (r/atom {:grid (generate-game-grid)
                     :active-tiles []
                     :not-a-real-word nil
-                    :submitted-words []}))
+                    :submitted-words []
+                    :game-state :playing}))
 
 
 (defn tile-active? [x y]
@@ -50,8 +53,8 @@
   (swap! state (fn [s]
                  (let [word (.toLowerCase (tiles-to-string tiles (s :grid)))]
                    (if (real-word? word)
-                     (merge s {:active-tiles []
-                               :submitted-words (conj (s :submitted-words) word)})
+                     (merge s {:submitted-words (conj (s :submitted-words) word)
+                               :game-state :tiles-deleting})
                      (merge s {:not-a-real-word word}))))))
 
 (defn legal-tiles []
@@ -102,10 +105,13 @@
 ;; ui components
 ;;
 (defn letter-tile [{:keys [letter x y]}]
-  (let [activated? (tile-active? x y)]
-    [:div.letter {:class (when activated? "active")
-                  :on-click #(tile-action-at! x y)}
+  (let [activated? (tile-active? x y)
+        deleting? (and activated? (= :tiles-deleting (@state :game-state)))]
+    [:div.letter {:class [(when activated? "active") (when deleting? "deleting")]
+                  :on-click #(when (not (= :tiles-deleting (@state :game-state)))
+                               (tile-action-at! x y))}
      letter]))
+
 
 (defn letter-grid []
   (let [grid (:grid @state)]
