@@ -29,7 +29,7 @@
          (take (* height grid-cols))
          (partition height))))
 
-(def possible-game-states #{:playing :tiles-deleting})
+(def possible-game-states #{:playing :tiles-deleting :tiles-falling})
 
 (def state (r/atom {:grid (generate-game-grid)
                     :active-tiles []
@@ -37,9 +37,48 @@
                     :submitted-words []
                     :game-state :playing}))
 
+(defn upon-animation
+  "register a one-time event listener for a given animation, and run function f when it happens"
+  [animation-name f]
+  (.addEventListener js/document
+                     "animationend"
+                     (fn [evt]
+                       (if (= animation-name (.-animationName evt))
+                         (f)))
+                     #js {"once" true}))
+
+(defn upon-transition
+  "register a one-time event listener for a given transition, and run function f when it happens"
+  [property-name f]
+  (.addEventListener js/document
+                     "transitionend"
+                     (fn [evt]
+                       (if (= property-name (.-propertyName evt))
+                         (f)))
+                     #js {"once" true}))
+
+(defn update-grid-after-fall! []
+  (println "start here"))
+
+(defn fall-after-fade!
+  "just-cleared tiles have finished fading out, so start column gravity animation"
+  []
+  (let [deleted (@state :active-tiles)
+        deleted-tile-info (for [col (range grid-cols)]
+                            (let [deleted-in-col (filterv #(= col (first %)) deleted)
+                                  highest-deleted (apply max (map second deleted-in-col))]
+                              {:column col
+                               :deleted (count deleted-in-col)
+                               :top-row-deleted highest-deleted}))]
+    (do
+      (swap! state merge {:deleted-tile-info deleted-tile-info
+                          :game-state :tiles-falling})
+      (upon-transition "transform" update-grid-after-fall!))))
+
 
 (defn tile-active? [x y]
   (some #{[x y]} (@state :active-tiles)))
+
 
 (defn tiles-to-string [tiles grid]
   (apply str (map (fn [[x y]]
@@ -53,8 +92,10 @@
   (swap! state (fn [s]
                  (let [word (.toLowerCase (tiles-to-string tiles (s :grid)))]
                    (if (real-word? word)
-                     (merge s {:submitted-words (conj (s :submitted-words) word)
-                               :game-state :tiles-deleting})
+                     (do
+                       (upon-animation "deleting" fall-after-fade!)
+                       (merge s {:submitted-words (conj (s :submitted-words) word)
+                                 :game-state :tiles-deleting}))
                      (merge s {:not-a-real-word word}))))))
 
 (defn legal-tiles []
@@ -101,15 +142,37 @@
                        (merge s {:active-tiles []
                                  :not-a-real-word nil})))))))
 
+(defn tile-fall-distance [x y]
+  (let [for-col (nth (@state :deleted-tile-info) x)]
+    (if (> y (:top-row-deleted for-col))
+      (:deleted for-col)
+      nil)))
+
 ;;
 ;; ui components
 ;;
+
+(defn tile-height-in-pixels []
+  (.-offsetHeight
+   (.querySelector js/document ".letter")))
+
+(defn falling-css [pixels]
+  (str "translate3D(0, " pixels "px, 0)"))
+
 (defn letter-tile [{:keys [letter x y]}]
   (let [activated? (tile-active? x y)
-        deleting? (and activated? (= :tiles-deleting (@state :game-state)))]
-    [:div.letter {:class [(when activated? "active") (when deleting? "deleting")]
-                  :on-click #(when (not (= :tiles-deleting (@state :game-state)))
-                               (tile-action-at! x y))}
+        deleting? (and activated? (= :tiles-deleting (@state :game-state)))
+        fall-distance (and (= :tiles-falling (@state :game-state))
+                           (tile-fall-distance x y))]
+    [:div.letter {:class [(when activated? "active")
+                          (when deleting? "deleting")
+                          (when fall-distance "falling")]
+                  :on-click #(when (= :playing (@state :game-state))
+                               (tile-action-at! x y))
+                  :style {:transform  (if fall-distance
+                                        (falling-css (* fall-distance (tile-height-in-pixels)))
+                                        "none")}
+                  }
      letter]))
 
 
@@ -146,6 +209,7 @@
      [building-word]]
     [:div.scoreboard
      [submitted-words]]]])
+
 
 (defonce root (rdom/create-root (.querySelector js/document "#root")))
 
