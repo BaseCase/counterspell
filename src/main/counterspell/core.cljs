@@ -7,7 +7,6 @@
 (defn index [coll] (map-indexed vector coll))
 
 
-
 ;; TODO: how many turns should the game be?
 ;; TODO: how big should the grid be?
 (def game-turns 3)
@@ -57,8 +56,20 @@
                          (f)))
                      #js {"once" true}))
 
+
 (defn update-grid-after-fall! []
-  (println "start here"))
+  (swap! state (fn [old]
+                 (merge old {:game-state :playing
+                             :active-tiles []
+                             :deleted-tile-info nil
+                             :grid (for [x (range grid-cols)]
+                                     (let [column (nth (old :grid) x)
+                                           deleted (filterv #(= x (first %)) (old :active-tiles))]
+                                       (->> (remove
+                                             (fn [[y _]] (some #(= y (second %)) deleted))
+                                             (index column))
+                                            (map second))))
+                             }))))
 
 (defn fall-after-fade!
   "just-cleared tiles have finished fading out, so start column gravity animation"
@@ -162,10 +173,12 @@
 (defn letter-tile [{:keys [letter x y]}]
   (let [activated? (tile-active? x y)
         deleting? (and activated? (= :tiles-deleting (@state :game-state)))
-        fall-distance (and (= :tiles-falling (@state :game-state))
+        falling? (= :tiles-falling (@state :game-state))
+        fall-distance (and falling?
                            (tile-fall-distance x y))]
     [:div.letter {:class [(when activated? "active")
                           (when deleting? "deleting")
+                          (when (and falling? activated?) "deleted")
                           (when fall-distance "falling")]
                   :on-click #(when (= :playing (@state :game-state))
                                (tile-action-at! x y))

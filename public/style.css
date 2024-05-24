@@ -50,6 +50,10 @@ body {
       &.deleting {
         animation: deleting forwards 1s;
       }
+
+      &.deleted {
+        opacity: 0;
+      }
     }
   }
 }
