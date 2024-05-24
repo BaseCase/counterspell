@@ -10,8 +10,8 @@
 ;; TODO: how many turns should the game be?
 ;; TODO: how big should the grid be?
 (def game-turns 3)
-(def grid-rows 5)
-(def grid-cols 4)
+(def grid-rows 7)
+(def grid-cols 6)
 
 ;; TODO: figure out how to get seeds working
 (defn create-letter-generator [seed]
@@ -26,7 +26,8 @@
   (let [height (* grid-rows (inc game-turns))]
     (->> letters
          (take (* height grid-cols))
-         (partition height))))
+         (partition height)
+         (map index))))
 
 (def possible-game-states #{:playing :tiles-deleting :tiles-falling})
 
@@ -62,6 +63,7 @@
                  (merge old {:game-state :playing
                              :active-tiles []
                              :deleted-tile-info nil
+                             :fresh-tiles-info (old :deleted-tile-info)
                              :grid (for [x (range grid-cols)]
                                      (let [column (nth (old :grid) x)
                                            deleted (filterv #(= x (first %)) (old :active-tiles))]
@@ -93,12 +95,13 @@
 
 (defn tiles-to-string [tiles grid]
   (apply str (map (fn [[x y]]
-                    (nth (nth grid x) y))
+                    (second (nth (nth grid x) y)))
                   tiles)))
 
 (defn real-word? [s]
   (words s))
 
+;; TODO: no animation even is fired for fading letters when they are exclusively on the top row, lmao!
 (defn submit-word! [tiles]
   (swap! state (fn [s]
                  (let [word (.toLowerCase (tiles-to-string tiles (s :grid)))]
@@ -142,15 +145,18 @@
                                                           (take-while #(not (= % [x y])))
                                                           (into []))
                                                      [x y])
+                                 :fresh-tiles-info nil
                                  :not-a-real-word nil}))))
       (if ((legal-tiles) [x y])
         ;; if this tile is inactive and valid, activate it!
         (swap! state (fn [s]
                        (merge s {:active-tiles (conj active-tiles [x y])
+                                 :fresh-tiles-info nil
                                  :not-a-real-word nil})))
         ;; if you click an invalid inactive tile, reset the selection
         (swap! state (fn [s]
                        (merge s {:active-tiles []
+                                 :fresh-tiles-info nil
                                  :not-a-real-word nil})))))))
 
 (defn tile-fall-distance [x y]
@@ -175,16 +181,17 @@
         deleting? (and activated? (= :tiles-deleting (@state :game-state)))
         falling? (= :tiles-falling (@state :game-state))
         fall-distance (and falling?
-                           (tile-fall-distance x y))]
+                           (tile-fall-distance x y))
+        fresh? (>= y (- grid-rows (:deleted (nth (@state :fresh-tiles-info) x))))]
     [:div.letter {:class [(when activated? "active")
                           (when deleting? "deleting")
                           (when (and falling? activated?) "deleted")
-                          (when fall-distance "falling")]
+                          (when fall-distance "falling")
+                          (when fresh? "fresh")]
                   :on-click #(when (= :playing (@state :game-state))
                                (tile-action-at! x y))
-                  :style {:transform  (if fall-distance
-                                        (falling-css (* fall-distance (tile-height-in-pixels)))
-                                        "none")}
+                  :style {:transform  (when fall-distance
+                                        (falling-css (* fall-distance (tile-height-in-pixels))))}
                   }
      letter]))
 
@@ -196,8 +203,7 @@
        (let [letters (take grid-rows col)]
          [:div.column {:key x}
           (for [[y l] (index letters)]
-            [letter-tile {:letter l :x x :y y
-                          :key (str l x y)}])]))]))
+            [letter-tile {:letter (second  l) :x x :y y :key (first l)}])]))]))
 
 (defn building-word []
   (let [word (tiles-to-string (@state :active-tiles) (@state :grid))

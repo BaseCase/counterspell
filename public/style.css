@@ -24,6 +24,15 @@ body {
   }
 }
 
+@keyframes fresh {
+  0% {
+    transform: translate3D(0, -200%, 0);
+  }
+  100% {
+    transform: none;
+  }
+}
+
 .letter-grid {
   display: flex;
 
@@ -47,12 +56,16 @@ body {
         background-color: #fcc;
       }
 
-      &.deleting {
+      &.deleting, &.active.deleting {
         animation: deleting forwards 1s;
       }
 
       &.deleted {
         opacity: 0;
+      }
+
+      &.fresh {
+        animation: fresh forwards 1s;
       }
     }
   }
