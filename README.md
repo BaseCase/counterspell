@@ -4,7 +4,7 @@ TODO: write this file
 
 TODO: favicon file
 
-TODO: credit wordlist source (https://www.mit.edu/~ecprice/wordlist.10000)
+TODO: credit wordlist source (/usr/share/dict/words)
 
 
 >>>>>>> main
