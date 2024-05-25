@@ -6,59 +6,32 @@ body {
   padding: 1rem 3rem;
 }
 
-.game-board {
-  display: flex;
+.letter-tile {
+  background-color: #eee;
+  cursor: pointer;
+  user-select: none;
 }
 
-.scoreboard {
-  font-size: 1.4rem;
-  padding: 1rem 2rem;
+.letter-tile:hover {
+  background-color: white;
 }
 
-@keyframes deleting {
-  0% {
-    opacity: 100%;
-  }
-  100% {
-    opacity: 0%;
-  }
+@keyframes naughty-flash {
+  0% { background-color: red; }
+  100% { background-color: white; }
 }
 
-.letter-grid {
-  display: flex;
-
-  .column {
-    display: flex;
-    flex-direction: column-reverse;
-
-    .letter {
-      border: 1px solid #ccc;
-      padding: 1rem;
-      cursor: pointer;
-      user-select: none;
-      transition: transform 1s;
-
-      &:hover {
-        background-color: #fee;
-      }
-
-      &.active {
-        border: 2px solid black;
-        background-color: #fcc;
-      }
-
-      &.deleting {
-        animation: deleting forwards 1s;
-      }
-    }
-  }
+.naughty {
+  animation: naughty-flash forwards 1s;
 }
 
-.building-word {
-  padding: 1rem;
-  font-size: 2rem;
+
+@keyframes fade-out {
+  0% { opacity: 100%; }
+  100% { opacity: 0%; }
 }
 
-.mistake {
-  color: #e312f5;
+@keyframes fall-in {
+  0% { transform: translateY(-200%); }
+  100% { transform: translateY(0); }
 }
