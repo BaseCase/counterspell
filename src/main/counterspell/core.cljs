@@ -16,8 +16,8 @@
 ;;
 (def game-turns 3)
 ;; TODO: how big should the grid be?
-(def grid-rows 5)
-(def grid-cols 5)
+(def grid-rows 7)
+(def grid-cols 6)
 
 (def tile-states #{:default :falling-in})
 (def game-states #{:selecting-tiles :submitting-word :advancing-turn :scoring})
@@ -61,6 +61,7 @@
                       :game-state :selecting-tiles
                       :selected-grid-spaces []
                       :bad-guess? false
+                      :remaining-words []
                       :found-words []})))
 
 
@@ -90,15 +91,17 @@
                         (with-index col))))
         (with-index grid)))
 
+
 (defn add-tiles-from-reserve [grid reserve removed]
-  (let [by-col (group-by first removed)]
-    (for [x (range grid-cols)]
-      (let [col (nth grid x)
-            needed (count (by-col x))
-            extras (take needed (nth reserve x))]
-        (into []
-              (concat col
-                      (map #(assoc % :state :falling-in) extras)))))))
+  (into []
+        (let [by-col (group-by first removed)]
+          (for [x (range grid-cols)]
+            (let [col (nth grid x)
+                  needed (count (by-col x))
+                  extras (take needed (nth reserve x))]
+              (into []
+                    (concat col
+                            (map #(assoc % :state :falling-in) extras))))))))
 
 (defn remove-tiles-from-reserve [reserve removed]
   (let [by-col (group-by first removed)]
@@ -112,15 +115,15 @@
 ;;
 ;; scoring
 ;;
-(def test-grid
-  (mapv (partial mapv #(hash-map :letter %)) [["a" "b" "c"] ["d" "e" "f"] ["g" "h" "i"]]))
-
 
 (def words-by-first-letter
   (->> words
        (group-by first)
        (map (fn [[k v]] [k (set v)]))
        (into {})))
+
+(defn path-to-word [path]
+  (apply str (map #(letter-at (@state :grid) (% 0) (% 1)) path)))
 
 
 ;; 0. push our starting point onto the to-check queue
@@ -136,16 +139,17 @@
 ;;        6. put these possible paths on our list of paths to check
 ;; finally, return the longest guy in the "found words paths" list
 (defn words-reachable-from [x y]
-  (let [words (words-by-first-letter (:letter (get-in (@state :grid) [x y])))]
+  (let [words (words-by-first-letter (:letter (get-in (@state :grid) [x y])))
+        words-vec (vec words)]
     (loop [to-check [[[x y]]]  ;; a queue (vector) of vectors of grid points, each one representing a path through the grid
            found-words []]
       (if (empty? to-check)
         found-words
         (let [path (last to-check)
-              word-so-far (apply str (map #(letter-at (@state :grid) (% 0) (% 1)) path))
+              word-so-far (path-to-word path)
               partial-word-re (re-pattern (str "^" word-so-far))
               is-full-word? (words word-so-far)
-              is-partial-word? (some #(re-find partial-word-re %) words)
+              is-partial-word? (some #(re-find partial-word-re %) words-vec)
               unchecked-neighbors (apply disj (neighbors (last path)) path)
               potential-paths (mapv #(conj path %) unchecked-neighbors)]
           (recur (if is-partial-word?
@@ -155,32 +159,28 @@
                    (conj found-words path)
                    found-words)))))))
 
+
 (defn run-scoring! []
-  (for [x (range grid-cols)
-        y (range grid-rows)]
-    (map (fn [path] ( apply str
-                     (map #(letter-at (@state :grid) (% 0) (% 1)) path)))
-         (words-reachable-from x y))))
-
-(comment
-  (time
-   (run-scoring!))
-  )
-
-
-
+  (let [longest-paths-from-each-tile (for [x (range grid-cols)
+                                           y (range grid-rows)]
+                                       (->> (words-reachable-from x y)
+                                            (sort-by count >)
+                                            first))
+        longest-words-with-paths (->> longest-paths-from-each-tile
+                                      (remove nil?)
+                                      (map #(vector (path-to-word %) %)))]
+    (swap! state assoc
+           :remaining-words longest-words-with-paths
+           :game-state :done)))
 
 
 
-
-
-
-;; NOTE: this should be called only on a setTimeout, as a next step action after post-word-submit grid update
+  ;; NOTE: this should be called only on a setTimeout, as a next step action after post-word-submit grid update
 (defn after-advancing-turn! []
   (if (= game-turns (count (@state :found-words)))
     (do
       (swap! state assoc :game-state :scoring)
-      (run-scoring!))
+      (js/setTimeout run-scoring! 1000))
 
     (swap! state (fn [old]
                    (-> old
@@ -206,7 +206,7 @@
 
 
 (defn submit-word! []
-  (let [maybe-word (.toLowerCase (tiles-to-string (@state :selected-grid-spaces)))]
+  (let [maybe-word (tiles-to-string (@state :selected-grid-spaces))]
     (if (words maybe-word)
       (do
         (swap! state (fn [old]
@@ -297,7 +297,7 @@
                                   (= :advancing-turn (@state :game-state)))
                          {:animation "0.5s forwards fall-in"}))
          :on-click #(tile-action! {:x grid-x :y grid-y :tile tile})}
-   (tile :letter)])
+   (.toUpperCase (tile :letter))])
 
 
 (defn word-in-progress []
@@ -316,9 +316,16 @@
     (for [word (@state :found-words)]
       [:li word])]
    (when (= :scoring (@state :game-state))
-     [:hr]
-     [:h2 "Final score:"]
-     [:p "good job"])])
+     [:<>
+      [:hr]
+      [:h2 "Scoring. I didn't code this part very well, so please wait..."]])
+   (when (= :done (@state :game-state))
+     [:<>
+      [:hr]
+      [:h2 "Words remaining on board:"]
+      [:ul
+       (for [word (map first (@state :remaining-words))]
+         [:li word])]])])
 
 
 (defonce root (rdom/create-root (.querySelector js/document "#root")))
