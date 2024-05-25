@@ -8,7 +8,7 @@
 ;;
 (defn with-index [coll] (map-indexed vector coll))
 (defn tiles-to-string [tiles] (apply str (map :letter tiles)))
-
+(defn letter-at [grid x y] (:letter (get-in grid [x y])))
 
 
 ;;
@@ -16,8 +16,8 @@
 ;;
 (def game-turns 3)
 ;; TODO: how big should the grid be?
-(def grid-rows 10)
-(def grid-cols 8)
+(def grid-rows 5)
+(def grid-cols 5)
 
 (def tile-states #{:default :falling-in})
 (def game-states #{:selecting-tiles :submitting-word :advancing-turn :scoring})
@@ -39,7 +39,7 @@
 
 ;; TODO: get seeds working for replayability/shareability
 (defn random-letter-generator [seed]
-  (let [alphabet "ABCDEFGHIJKLMNOPQRSTUVWXYZ"]
+  (let [alphabet "abcdefghijklmnopqrstuvwxyz"]
     (repeatedly #(rand-nth alphabet))))
 
 
@@ -108,11 +108,79 @@
         (drop used col)))))
 
 
+
+;;
+;; scoring
+;;
+(def test-grid
+  (mapv (partial mapv #(hash-map :letter %)) [["a" "b" "c"] ["d" "e" "f"] ["g" "h" "i"]]))
+
+
+(def words-by-first-letter
+  (->> words
+       (group-by first)
+       (map (fn [[k v]] [k (set v)]))
+       (into {})))
+
+
+;; 0. push our starting point onto the to-check queue
+;; while the queue is not empty:
+;;   1. pop a path from the to-check queue
+;;   2. is our path to this point a full word?
+;;      2a. if yes, push that into our "found words paths" set. continue on regardless.
+;;   3. is our path to this point a partial word?
+;;      3a. if no, continue on to next entry of queue
+;;      3b. if yes:
+;;        4. look at all neighbors of path's tail
+;;        5. subtract neighbors that are in our path already
+;;        6. put these possible paths on our list of paths to check
+;; finally, return the longest guy in the "found words paths" list
+(defn words-reachable-from [x y]
+  (let [words (words-by-first-letter (:letter (get-in (@state :grid) [x y])))]
+    (loop [to-check [[[x y]]]  ;; a queue (vector) of vectors of grid points, each one representing a path through the grid
+           found-words []]
+      (if (empty? to-check)
+        found-words
+        (let [path (last to-check)
+              word-so-far (apply str (map #(letter-at (@state :grid) (% 0) (% 1)) path))
+              partial-word-re (re-pattern (str "^" word-so-far))
+              is-full-word? (words word-so-far)
+              is-partial-word? (some #(re-find partial-word-re %) words)
+              unchecked-neighbors (apply disj (neighbors (last path)) path)
+              potential-paths (mapv #(conj path %) unchecked-neighbors)]
+          (recur (if is-partial-word?
+                   (apply conj (pop to-check) potential-paths)     ;; keep searching down this path if it might be a word
+                   (pop to-check))                                 ;; if not, abandon this path and go back to the rest
+                 (if is-full-word?
+                   (conj found-words path)
+                   found-words)))))))
+
+(defn run-scoring! []
+  (for [x (range grid-cols)
+        y (range grid-rows)]
+    (map (fn [path] ( apply str
+                     (map #(letter-at (@state :grid) (% 0) (% 1)) path)))
+         (words-reachable-from x y))))
+
+(comment
+  (time
+   (run-scoring!))
+  )
+
+
+
+
+
+
+
+
+
 ;; NOTE: this should be called only on a setTimeout, as a next step action after post-word-submit grid update
 (defn after-advancing-turn! []
-  (println "donk")
   (if (= game-turns (count (@state :found-words)))
-    (swap! state assoc :game-state :scoring)
+    (do
+      (swap! state assoc :game-state :scoring)
+      (run-scoring!))
 
     (swap! state (fn [old]
                    (-> old
