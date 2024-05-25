@@ -19,8 +19,8 @@
 (def grid-rows 7)
 (def grid-cols 6)
 
-(def tile-states #{:default})
-(def game-states #{:selecting-tiles :submitting-word})
+(def tile-states #{:default :falling-in})
+(def game-states #{:selecting-tiles :submitting-word :advancing-turn :scoring})
 
 
 (defn neighbors [[x y]]
@@ -82,19 +82,58 @@
     true))
 
 
+(defn remove-selected-spaces-from-grid [grid selected]
+  (mapv (fn [[x col]]
+          (mapv second
+                (remove (fn [[y tile]]
+                          (selected [x y]))
+                        (with-index col))))
+        (with-index grid)))
+
+(defn add-tiles-from-reserve [grid reserve removed]
+  (let [by-col (group-by first removed)]
+    (for [x (range grid-cols)]
+      (let [col (nth grid x)
+            needed (count (by-col x))
+            extras (take needed (nth reserve x))]
+        (into []
+              (concat col
+                      (map #(assoc % :state :falling-in) extras)))))))
+
+(defn remove-tiles-from-reserve [reserve removed]
+  (let [by-col (group-by first removed)]
+    (for [x (range grid-cols)]
+      (let [col (nth reserve x)
+            used (count (by-col x))]
+        (drop used col)))))
+
+
+;; NOTE: this should be called only on a setTimeout, as a next step action after post-word-submit grid update
+(defn after-advancing-turn! []
+  (println "donk")
+  (if (= game-turns (count (@state :found-words)))
+    (swap! state assoc :game-state :scoring)
+
+    (swap! state (fn [old]
+                   (-> old
+                       (assoc :game-state :selecting-tiles)
+                       (assoc :grid (mapv (partial mapv #(assoc % :state :default)) (old :grid))))))))
+
+
+
 ;; NOTE: this should be called only on a setTimeout, as a next step action after word submit
 (defn after-submitting-word! []
-  (swap! state (fn [old]
-                 (let [gone (into #{} (map #(vector (% :x) (% :y)) (@state :selected-grid-spaces)))]
-                   (-> old
-                       (assoc :grid (mapv (fn [[x col]]
-                                            (mapv second
-                                                  (remove (fn [[y tile]]
-                                                            (gone [x y]))
-                                                          (with-index col))))
-                                          (with-index (old :grid))))
-                       (assoc :game-state :selecting-tiles)
-                       (assoc :selected-grid-spaces []))))))
+  (do
+    (swap! state (fn [old]
+                   (let [gone (into #{} (map #(vector (% :x) (% :y)) (@state :selected-grid-spaces)))]
+                     (-> old
+                         (assoc :grid (-> (old :grid)
+                                          (remove-selected-spaces-from-grid gone)
+                                          (add-tiles-from-reserve (old :reserve-grid) gone)))
+                         (assoc :game-state :advancing-turn)
+                         (assoc :selected-grid-spaces [])
+                         (update :reserve-grid remove-tiles-from-reserve gone)))))
+    (js/setTimeout after-advancing-turn! 600)))
 
 
 
@@ -185,7 +224,10 @@
                           :background-color "#fbb"
                           :animation (when (= :submitting-word (@state :game-state))
                                        "fade-out forwards 0.5s")}
-                         {:border "1px solid black"}))
+                         {:border "1px solid black"})
+                       (when (and (= :falling-in (tile :state))
+                                  (= :advancing-turn (@state :game-state)))
+                         {:animation "0.5s forwards fall-in"}))
          :on-click #(tile-action! {:x grid-x :y grid-y :tile tile})}
    (tile :letter)])
 
@@ -204,7 +246,11 @@
    [:h2 "Found words:"]
    [:ul
     (for [word (@state :found-words)]
-      [:li word])]])
+      [:li word])]
+   (when (= :scoring (@state :game-state))
+     [:hr]
+     [:h2 "Final score:"]
+     [:p "good job"])])
 
 
 (defonce root (rdom/create-root (.querySelector js/document "#root")))
