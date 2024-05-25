@@ -16,8 +16,8 @@
 ;;
 (def game-turns 3)
 ;; TODO: how big should the grid be?
-(def grid-rows 7)
-(def grid-cols 6)
+(def grid-rows 10)
+(def grid-cols 8)
 
 (def tile-states #{:default :falling-in})
 (def game-states #{:selecting-tiles :submitting-word :advancing-turn :scoring})
