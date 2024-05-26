@@ -11,6 +11,8 @@ You can try the game [on my website](https://caseybrant.com/counterspell/#709).
 
 
 ## Credits
+Game by Casey Brant.
+
 Word list is from the `/usr/share/dict/words` file that comes on macOS. I think there are probably better lists, but that was the easiest one to grab for a game jam.
 
 This game uses the [JSRand library](https://github.com/DomenicoDeFelice/jsrand) for seeded random number generation.
