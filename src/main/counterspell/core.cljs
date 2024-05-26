@@ -11,6 +11,39 @@
 (defn tiles-to-string [tiles] (apply str (map :letter tiles)))
 (defn letter-at [grid x y] (:letter (get-in grid [x y])))
 
+(def letter-values
+  {"a" 1
+   "b" 3
+   "c" 3
+   "d" 2
+   "e" 1
+   "f" 4
+   "g" 2
+   "h" 4
+   "i" 1
+   "j" 8
+   "k" 5
+   "l" 1
+   "m" 3
+   "n" 1
+   "o" 1
+   "p" 3
+   "q" 10
+   "r" 1
+   "s" 1
+   "t" 1
+   "u" 1
+   "v" 4
+   "w" 4
+   "x" 8
+   "y" 4
+   "z" 10})
+
+(defn score-word [word]
+  (->> word
+       (map letter-values)
+       (apply +)))
+
 
 ;;
 ;; initial game data
@@ -327,9 +360,24 @@
      [:<>
       [:hr]
       [:h2 "Words remaining on board:"]
-      [:ul
-       (for [word (map first (@state :remaining-words))]
-         [:li word])]])])
+      [:table
+       [:tbody
+        (for [word (map first (@state :remaining-words))]
+          [:tr
+           [:td word]
+           [:td (score-word word)]])]]
+      [:hr]
+      [:h2 "Final score (lower is better)"]
+      [:h3 (->> (@state :remaining-words) (map first) (map score-word) (apply +))]
+      [:div
+       [:a {:href (str "/#" (@state :random-seed))
+            :on-click #(.reload js/location)} "Try this board again"]]
+      [:div
+       [:a {:href "/"
+            :on-click #(.reload js/location)} "Try a new random board"]]
+      [:div
+       [:a {:href (str "/#" (@state :random-seed))}
+        "Copy this link to challenge someone else to the same board."]]])])
 
 
 (defonce root (rdom/create-root (.querySelector js/document "#root")))
