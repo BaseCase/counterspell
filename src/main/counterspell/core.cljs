@@ -50,8 +50,8 @@
 ;;
 (def game-turns 3)
 ;; TODO: how big should the grid be?
-(def grid-rows 7)
-(def grid-cols 6)
+(def grid-rows 6)
+(def grid-cols 5)
 
 (def tile-states #{:default :falling-in})
 (def game-states #{:selecting-tiles :submitting-word :advancing-turn :scoring})
@@ -293,24 +293,59 @@
 (declare letter-tile)
 (declare word-in-progress)
 (declare found-words)
+(declare instructions)
 
 
 (defn main []
   [:div
-   [:h1 "Counterspell!!!"]
-   [:h6 (str "(seed: " (@state :random-seed) ")")]
+   [:div {:comment "header bar"
+          :style {:width "100%"
+                  :background "rgb(62, 62, 62)"
+                  :display "flex"
+                  :align-items "baseline"
+                  :justify-content "space-between"}}
+    [:h1 {:class "other-font"
+          :style {:font-size "20px"
+                  :letter-spacing "0.06rem"
+                  :padding "0.7rem 1rem"
+                  :color "white"}}
+     "Counterspell"]
+    [:div {:class "fancy-font"
+           :style {:display "flex"
+                   :gap "2rem"}}
+     [:a {:href "#"
+          :on-click #(do (set! js/location.hash "")
+                         (.reload js/location))
+          :style {:color "yellow"
+                  :font-size "16px"}}
+      "Try a different board"]
+     [:a {:href "https://itch.io/jam/spring-lisp-game-jam-2024"
+          :target "_blank"
+          :style {:color "white"
+                  :font-size "14px"}}
+      "Made for Spring Lisp Game Jam 2024"]
+     [:a {:href "https://basecase.itch.io/counterspell"
+          :target "_blank"
+          :style {:color "white"
+                  :font-size "14px"}}
+      "itch.io Page"]]]
+   [:h6 {:style {:color "#777"}} (str "(seed: " (@state :random-seed) ")")]
    [:div {:style {:display "flex"
-                  :flex-direction "row"}}
+                  :flex-direction "row"
+                  :gap "1rem"
+                  :padding-top "2rem"}}
+    [instructions]
     [:div
      [:div {:comment "the letter grid"
-            :style {:display "flex"}}
+            :style {:display "flex"
+                    :gap "5px"}}
       (for [[grid-x col] (with-index (@state :grid))]
         [:div {:comment "one column of tiles"
                :key grid-x
-               :style {:background "blue"
-                       :display "flex"
+               :style {:display "flex"
                        :flex-direction "column-reverse"
-                       :align-items "center"}}
+                       :align-items "center"
+                       :gap "5px"}}
          (for [[grid-y tile] (with-index col)]
            [letter-tile {:key grid-y
                          :tile tile
@@ -322,15 +357,19 @@
 
 (defn letter-tile [{:keys [tile grid-x grid-y]}]
   [:div {:comment "a single letter tile"
-         :class "letter-tile"
-         :style (merge {:padding "1rem"
-                        :width "100%"}
+         :class "letter-tile fancy-font"
+         :style (merge {:padding "1.2rem"
+                        :width "100%"
+                        :font-size "24px"
+                        :box-shadow "rgba(0, 0, 0, 0.3) 0px 2px 1px 0px"
+                        :border-radius "4px"}
                        (if (is-selected? {:x grid-x :y grid-y})
-                         {:border "1px solid red"
-                          :background-color "#fbb"
+                         {:border "1px solid rgb(0, 86, 196)"
+                          :background "rgb(171, 208, 255)"
+                          :box-shadow "none"
                           :animation (when (= :submitting-word (@state :game-state))
                                        "fade-out forwards 0.5s")}
-                         {:border "1px solid black"})
+                         {:border "1px solid #555"})
                        (when (and (= :falling-in (tile :state))
                                   (= :advancing-turn (@state :game-state)))
                          {:animation "0.5s forwards fall-in"}))
@@ -342,34 +381,37 @@
   (let [maybe-word (tiles-to-string (@state :selected-grid-spaces))]
     [:div {:comment "the currently-being-spelled word"
            :style {:padding "1rem"
-                   :font-size "200%"}
-           :class (when (@state :bad-guess?) "naughty")}
-     [:h2 maybe-word]]))
+                   :font-size "200%"
+                   :font-weight 900}
+           :class ["fancy-font" (when (@state :bad-guess?) "naughty")]}
+     [:h2 (.toUpperCase maybe-word)]]))
 
 
 (defn found-words []
   [:div {:style {:margin-left "1rem"}}
-   [:h2 "Found words:"]
+   [:h2 {:class "other-font"} "Found words:"]
    [:ul
     (for [word (@state :found-words)]
-      [:li word])]
+      [:li {:class "fancy-font"} word])]
    (when (= :scoring (@state :game-state))
      [:<>
       [:hr]
-      [:h2 "Scoring. This is a little slow, stand by..."]])
+      [:h2 {:class "other-font"} "Scoring. Stand by..."]])
    (when (= :done (@state :game-state))
      [:<>
       [:hr]
-      [:h2 "Words remaining on board:"]
+      [:h2 {:class "other-font"} "Words remaining on board:"]
       [:table
        [:tbody
         (for [word (map first (@state :remaining-words))]
-          [:tr
+          [:tr {:class "fancy-font"}
            [:td word]
            [:td (score-word word)]])]]
       [:hr]
-      [:h2 "Final score (lower is better)"]
-      [:h3 (->> (@state :remaining-words) (map first) (map score-word) (apply +))]
+      [:h2 {:class "other-font"} "Final score (lower is better)"]
+      [:h3 {:class "fancy-font"
+            :style {:font-size "28px"
+                    :color "blue"}} (->> (@state :remaining-words) (map first) (map score-word) (apply +))]
       [:div
        [:a {:href "#"
             :on-click #(.reload js/location)} "Try this board again"]]
@@ -380,6 +422,22 @@
       [:div
        [:a {:href (str (.-origin js/location) (.-pathname js/location) (.-hash js/location))}
         "Copy this link to challenge someone else to the same board."]]])])
+
+(defn instructions []
+  [:div {:style {:padding "0 2rem"
+                 :width "21rem"}}
+   [:h2 {:class "other-font"
+         :style {:border-bottom "1px solid #ccc"}} "How to play"]
+   [:ul {:class "other-font"
+         :style {:padding "1rem 0 0 0"
+                 :font-size "14px"}}
+    [:li "The goal of Counterspell is to get the lowest score possible."]
+    [:li "You have 3 turns to find words on the board and clear them."]
+    [:li "Words are spelled by making a path of adjacent (orthogonal and diagonal) tiles."]
+    [:li "Tiles will fall to fill in cleared board spaces."]
+    [:li "Score is calculated at the end of the game based on words remaining on the board."]
+    [:li "Boards are randomly generated, based on seeds. Replay the same seed and it will be the same board."]
+    [:li "Try to beat your own score or challenge a friend!"]]])
 
 
 (defonce root (rdom/create-root (.querySelector js/document "#root")))
