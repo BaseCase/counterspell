@@ -387,41 +387,56 @@
      [:h2 (.toUpperCase maybe-word)]]))
 
 
+(defn final-score []
+  (->> (@state :remaining-words) (map first) (map score-word) (apply +)))
+
 (defn found-words []
-  [:div {:style {:margin-left "1rem"}}
-   [:h2 {:class "other-font"} "Found words:"]
-   [:ul
-    (for [word (@state :found-words)]
-      [:li {:class "fancy-font"} word])]
-   (when (= :scoring (@state :game-state))
-     [:<>
-      [:hr]
-      [:h2 {:class "other-font"} "Scoring. Stand by..."]])
-   (when (= :done (@state :game-state))
-     [:<>
-      [:hr]
-      [:h2 {:class "other-font"} "Words remaining on board:"]
-      [:table
-       [:tbody
-        (for [word (map first (@state :remaining-words))]
-          [:tr {:class "fancy-font"}
-           [:td word]
-           [:td (score-word word)]])]]
-      [:hr]
-      [:h2 {:class "other-font"} "Final score (lower is better)"]
-      [:h3 {:class "fancy-font"
-            :style {:font-size "28px"
-                    :color "blue"}} (->> (@state :remaining-words) (map first) (map score-word) (apply +))]
-      [:div
-       [:a {:href "#"
-            :on-click #(.reload js/location)} "Try this board again"]]
-      [:div
-       [:a {:href "#"
-            :on-click #(do (set! js/location.hash "")
-                           (.reload js/location))} "Try a new random board"]]
-      [:div
-       [:a {:href (str (.-origin js/location) (.-pathname js/location) (.-hash js/location))}
-        "Copy this link to challenge someone else to the same board."]]])])
+  (let [hide-text (r/atom true)]
+    (fn []
+      [:div {:style {:margin-left "1rem"}}
+       [:h2 {:class "other-font"} "Found words:"]
+       [:ul
+        (for [word (@state :found-words)]
+          [:li {:class "fancy-font"} word])]
+       (when (= :scoring (@state :game-state))
+         [:<>
+          [:hr]
+          [:h2 {:class "other-font"} "Scoring. Stand by..."]])
+       (when (= :done (@state :game-state))
+         [:<>
+          [:hr]
+          [:h2 {:class "other-font"} "Words remaining on board:"]
+          [:table
+           [:tbody
+            (for [word (map first (@state :remaining-words))]
+              [:tr {:class "fancy-font"}
+               [:td word]
+               [:td (score-word word)]])]]
+          [:hr]
+          [:h2 {:class "other-font"} "Final score (lower is better)"]
+          [:h3 {:class "fancy-font"
+                :style {:font-size "28px"
+                        :color "blue"}} (final-score)]
+          [:div
+           [:button {:on-click (fn [e] (let [share-text (str "🪄 I got " (final-score) " points on Counterspell #"
+                                                             (@state :random-seed) ". Can you score lower? 🪄 \n"
+                                                             (.-href js/location))]
+                                         (.writeText js/navigator.clipboard share-text)
+                                         (reset! hide-text false)
+                                         (js/setTimeout #(reset! hide-text true) 4000)))}
+            "📋 Share your score!"]
+           (when (not @hide-text)
+             [:p {:class "fancy-font" :style {:color "blue"}} "(message copied to clipboard)"])]
+          [:div
+           [:a {:href "#"
+                :on-click #(.reload js/location)} "Try this board again"]]
+          [:div
+           [:a {:href "#"
+                :on-click #(do (set! js/location.hash "")
+                               (.reload js/location))} "Try a new random board"]]
+          [:div
+           [:a {:href (str (.-origin js/location) (.-pathname js/location) (.-hash js/location))}
+            "Copy this link to challenge someone else to the same board."]]])])))
 
 (defn instructions []
   [:div {:style {:padding "0 2rem"
