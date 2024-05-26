@@ -298,6 +298,7 @@
 (defn main []
   [:div
    [:h1 "Counterspell!!!"]
+   [:h6 (str "(seed: " (@state :random-seed) ")")]
    [:div {:style {:display "flex"
                   :flex-direction "row"}}
     [:div
@@ -355,7 +356,7 @@
    (when (= :scoring (@state :game-state))
      [:<>
       [:hr]
-      [:h2 "Scoring. I didn't code this part very well, so please wait..."]])
+      [:h2 "Scoring. This is a little slow, stand by..."]])
    (when (= :done (@state :game-state))
      [:<>
       [:hr]
@@ -370,13 +371,14 @@
       [:h2 "Final score (lower is better)"]
       [:h3 (->> (@state :remaining-words) (map first) (map score-word) (apply +))]
       [:div
-       [:a {:href (str "/#" (@state :random-seed))
+       [:a {:href "#"
             :on-click #(.reload js/location)} "Try this board again"]]
       [:div
-       [:a {:href "/"
-            :on-click #(.reload js/location)} "Try a new random board"]]
+       [:a {:href "#"
+            :on-click #(do (set! js/location.hash "")
+                           (.reload js/location))} "Try a new random board"]]
       [:div
-       [:a {:href (str "/#" (@state :random-seed))}
+       [:a {:href (str (.-origin js/location) (.-pathname js/location) (.-hash js/location))}
         "Copy this link to challenge someone else to the same board."]]])])
 
 
@@ -391,5 +393,6 @@
                       (apply str)
                       (parse-long))
         seed (or url-seed (rand-int 10000))]
+    (set! js/location.hash seed)
     (init-game seed)
     (rdom/render root [main])))
