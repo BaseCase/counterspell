@@ -1,7 +1,8 @@
 (ns counterspell.core
   (:require [reagent.dom.client :as rdom]
             [reagent.core :as r]
-            [counterspell.words :refer [words]]))
+            [counterspell.words :refer [words]]
+            ["/vendor/jsrand" :as jsrand]))
 
 ;;
 ;; generic helpers
@@ -39,8 +40,9 @@
 
 ;; TODO: get seeds working for replayability/shareability
 (defn random-letter-generator [seed]
-  (let [alphabet "abcdefghijklmnopqrstuvwxyz"]
-    (repeatedly #(rand-nth alphabet))))
+  (let [alphabet (clj->js "abcdefghijklmnopqrstuvwxyz")
+        generator (new jsrand seed)]
+    (repeatedly #(.choice generator alphabet))))
 
 
 (defn generate-game-grid [random-seed]
@@ -53,16 +55,19 @@
                          {:letter letter
                           :state :default}) letters))))))
 
-(let [full-grid (generate-game-grid nil)
-      starters (mapv #(into [] (take grid-rows %)) full-grid)
-      reserve (mapv #(into [] (drop grid-rows %)) full-grid)]
-  (def state (r/atom {:grid starters
-                      :reserve-grid reserve
-                      :game-state :selecting-tiles
-                      :selected-grid-spaces []
-                      :bad-guess? false
-                      :remaining-words []
-                      :found-words []})))
+
+(defn init-game [random-seed]
+  (let [full-grid (generate-game-grid random-seed)
+        starters (mapv #(into [] (take grid-rows %)) full-grid)
+        reserve (mapv #(into [] (drop grid-rows %)) full-grid)]
+    (def state (r/atom {:grid starters
+                        :random-seed random-seed
+                        :reserve-grid reserve
+                        :game-state :selecting-tiles
+                        :selected-grid-spaces []
+                        :bad-guess? false
+                        :remaining-words []
+                        :found-words []}))))
 
 
 ;;
@@ -334,4 +339,10 @@
   ^:dev/after-load
   init
   []
-  (rdom/render root [main]))
+  (let [url-seed (->> (.-hash js/location)
+                      (drop 1)
+                      (apply str)
+                      (parse-long))
+        seed (or url-seed (rand-int 10000))]
+    (init-game seed)
+    (rdom/render root [main])))

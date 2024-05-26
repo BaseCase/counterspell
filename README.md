@@ -6,6 +6,8 @@ TODO: favicon file
 
 TODO: credit wordlist source (/usr/share/dict/words)
 
+TODO: credit jsrand author (https://github.com/DomenicoDeFelice/jsrand)
+
 
 ## Building instructions
 1. Install dependencies (`npm install` and (TODO: what is the shadow-cljs version of this?))
