@@ -38,7 +38,6 @@
    (disj nil)))
 
 
-;; TODO: get seeds working for replayability/shareability
 (defn random-letter-generator [seed]
   (let [alphabet (clj->js "abcdefghijklmnopqrstuvwxyz")
         generator (new jsrand seed)]
