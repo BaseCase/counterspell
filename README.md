@@ -6,6 +6,8 @@ TODO: favicon file
 
 TODO: credit wordlist source (/usr/share/dict/words)
 
+TODO: credit jsrand author (https://github.com/DomenicoDeFelice/jsrand)
+
 
 >>>>>>> main
 ## Building instructions
